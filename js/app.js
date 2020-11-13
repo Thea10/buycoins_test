@@ -1,5 +1,4 @@
 /* eslint-disable no-unused-vars */
-
 async function getRepos() {
   let baseURL = "https://api.github.com/graphql";
 
@@ -8,7 +7,7 @@ async function getRepos() {
     headers: {
       "Content-Type": "application/json",
       Accept: "application/json",
-      Authorization: "Bearer a94624ef6eca938168c2f9791ec5a9f3b9fa610c",
+      Authorization: `Bearer ${process.env.TOKEN}`,
     },
     body: JSON.stringify({
       query: `{
