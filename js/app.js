@@ -7,7 +7,7 @@ async function getRepos() {
     headers: {
       "Content-Type": "application/json",
       Accept: "application/json",
-      Authorization: `Bearer ${process.env.TOKEN}`,
+      Authorization: "Bearer a94624ef6eca938168c2f9791ec5a9f3b9fa610c",
     },
     body: JSON.stringify({
       query: `{
