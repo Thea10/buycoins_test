@@ -3,6 +3,16 @@ body {
     font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif,Apple Color Emoji,Segoe UI Emoji;
   }
 
+  #loading{
+    margin: auto;
+    width: 200px;
+    height: 100vh;
+  }
+
+  #loading img{
+    width: 100%;
+    height: 100%;
+  }
   #loading, #main-body{
       display: none;
   }
