@@ -1,3 +1,6 @@
+const { TOKEN } = require("./js/auth");
+
+
 /* eslint-disable no-unused-vars */
 async function getRepos() {
   let baseURL = "https://api.github.com/graphql";
@@ -7,7 +10,7 @@ async function getRepos() {
     headers: {
       "Content-Type": "application/json",
       Accept: "application/json",
-      Authorization: "Bearer a94624ef6eca938168c2f9791ec5a9f3b9fa610c",
+      Authorization: `bearer ${TOKEN}`,
     },
     body: JSON.stringify({
       query: `{
@@ -57,7 +60,6 @@ async function getRepos() {
       document.getElementById("main-body").classList.toggle("show");
     })
     .catch((error) => {
-      console.log("errors");
       console.error("Error:", error);
       document.getElementById("error-message").textContent = error;
     });
@@ -112,4 +114,10 @@ function getDate(datestr) {
   let now = new Date().getTime();
   let dateString = new Date(datestr).getTime();
   return Math.round(parseFloat(Math.abs(dateString - now) / (1000 * 60 * 60 * 24), 10));
+}
+
+getRepos();
+
+module.exports = {
+  getRepos
 }

@@ -1,0 +1,22 @@
+{
+  "name": "buycoins-coding-challenge",
+  "version": "1.0.0",
+  "description": "",
+  "main": "bundle.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Thea10/buycoins_test.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Thea10/buycoins_test/issues"
+  },
+  "homepage": "https://github.com/Thea10/buycoins_test#readme",
+  "dependencies": {
+    "browserify": "^17.0.0"
+  }
+}
