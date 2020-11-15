@@ -1,6 +1,293 @@
 (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
+require('dotenv').config()
+const fetch = require("node-fetch");
+const { TOKEN } = require("./js/auth");
 
-},{}],2:[function(require,module,exports){
+async function getRepos() {
+  let baseURL = "https://api.github.com/graphql";
+
+  await fetch(baseURL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Authorization: `bearer ${TOKEN}`,
+    },
+    body: JSON.stringify({
+      query: `{
+        viewer {
+          login
+          repositories(affiliations: OWNER, orderBy: {field: PUSHED_AT, direction: DESC}, first: 20, privacy: PUBLIC) {
+            edges {
+              node {
+                id
+                updatedAt
+                name
+                stargazerCount
+                primaryLanguage {
+                    name
+                    color
+                  }
+              }
+            }
+          }
+          starredRepositories {
+            totalCount
+          }
+        }
+        user(login: "Thea10") {
+            name
+            repositories(orderBy: {field: UPDATED_AT, direction: ASC}) {
+              totalCount
+            }
+          bio
+          email
+          avatarUrl
+          following {
+            totalCount
+          }
+          followers {
+            totalCount
+          }
+        
+        }
+      }`,
+    }),
+  })
+    .then((res) => res.json())
+    .then((data) => {
+      populateData(data.data);
+      document.getElementById("loading").classList.toggle("show");
+      document.getElementById("main-body").classList.toggle("show");
+    })
+    .catch((error) => {
+      console.error("Error:", error);
+      document.getElementById("error-message").textContent = error;
+    });
+}
+
+function populateData(data) {
+  let { viewer, user } = data;
+  document
+    .querySelectorAll(".avatar")
+    .forEach((item) => (item.src = user.avatarUrl));
+  document.getElementById("main-name").textContent = user.name;
+  document.getElementById("name-alias").textContent = viewer.login;
+  document.querySelector("#tab-link-profile span").textContent = viewer.login;
+  document.getElementById("user-bio").textContent = user.bio;
+  document.getElementById("user-email").textContent = user.email;
+  document.getElementById("followers").textContent = user.followers.totalCount;
+  document.getElementById("following").textContent = user.following.totalCount;
+  document.querySelectorAll(".repo-count").forEach((item) => (item.textContent = viewer.repositories.edges.length));
+  document.getElementById("gazers").textContent =
+    viewer.starredRepositories.totalCount;
+
+  let populate = viewer.repositories.edges.filter(edge => {return edge.node.primaryLanguage !== null});
+  populate.forEach(item => {
+      let details = item.node;
+      let repoDetailHolder = document.createElement("div");
+      repoDetailHolder.className = "repository-body-card d-flex justify-between";
+      let repoDetails = `
+      <div class="d-flex repo-details">
+      <a href="#" class="repo-name"> ${details.name} </a>
+  
+      <div class="d-flex"> <span> <small class="repo-color" style='background-color: ${
+        details.primaryLanguage.color
+      }'></small> ${
+      details.primaryLanguage.name
+    } </span> <span> Updated  ${getDate(
+      details.updatedAt
+    )}</span> </div>
+  
+    </div>
+  
+    <button class="star d-flex"> <i class="fa fa-star-o"></i> <span>Star</span> </button>
+      `;
+     repoDetailHolder.innerHTML = repoDetails;
+     document.getElementById('repository-body-cards').append(repoDetailHolder)
+
+
+  })
+
+
+
+}
+
+function getDate(datestr) {
+  let now = new Date().getTime();
+  let dateString = new Date(datestr).getTime();
+  let dateDifference = Math.abs(dateString - now);
+  let dateUpdated = Math.round(parseFloat(dateDifference / (1000 * 60 * 60 * 24), 10));
+   if(dateUpdated < 1){
+     return `${ Math.round(parseFloat(dateDifference / (1000 * 60 * 60), 10))} hours ago`;
+   } 
+
+   if (dateUpdated > 20){
+     return new Date(datestr).toDateString().substr(4,6);
+   }
+  return `${dateUpdated} days ago`;
+}
+
+getRepos();
+
+
+
+},{"./js/auth":2,"dotenv":4,"node-fetch":5}],2:[function(require,module,exports){
+(function (process){(function (){
+
+module.exports = {
+    TOKEN:  process.env.TOKEN
+ };
+
+}).call(this)}).call(this,require('_process'))
+},{"_process":7}],3:[function(require,module,exports){
+
+},{}],4:[function(require,module,exports){
+(function (process){(function (){
+/* @flow */
+/*::
+
+type DotenvParseOptions = {
+  debug?: boolean
+}
+
+// keys and values from src
+type DotenvParseOutput = { [string]: string }
+
+type DotenvConfigOptions = {
+  path?: string, // path to .env file
+  encoding?: string, // encoding of .env file
+  debug?: string // turn on logging for debugging purposes
+}
+
+type DotenvConfigOutput = {
+  parsed?: DotenvParseOutput,
+  error?: Error
+}
+
+*/
+
+const fs = require('fs')
+const path = require('path')
+
+function log (message /*: string */) {
+  console.log(`[dotenv][DEBUG] ${message}`)
+}
+
+const NEWLINE = '\n'
+const RE_INI_KEY_VAL = /^\s*([\w.-]+)\s*=\s*(.*)?\s*$/
+const RE_NEWLINES = /\\n/g
+const NEWLINES_MATCH = /\n|\r|\r\n/
+
+// Parses src into an Object
+function parse (src /*: string | Buffer */, options /*: ?DotenvParseOptions */) /*: DotenvParseOutput */ {
+  const debug = Boolean(options && options.debug)
+  const obj = {}
+
+  // convert Buffers before splitting into lines and processing
+  src.toString().split(NEWLINES_MATCH).forEach(function (line, idx) {
+    // matching "KEY' and 'VAL' in 'KEY=VAL'
+    const keyValueArr = line.match(RE_INI_KEY_VAL)
+    // matched?
+    if (keyValueArr != null) {
+      const key = keyValueArr[1]
+      // default undefined or missing values to empty string
+      let val = (keyValueArr[2] || '')
+      const end = val.length - 1
+      const isDoubleQuoted = val[0] === '"' && val[end] === '"'
+      const isSingleQuoted = val[0] === "'" && val[end] === "'"
+
+      // if single or double quoted, remove quotes
+      if (isSingleQuoted || isDoubleQuoted) {
+        val = val.substring(1, end)
+
+        // if double quoted, expand newlines
+        if (isDoubleQuoted) {
+          val = val.replace(RE_NEWLINES, NEWLINE)
+        }
+      } else {
+        // remove surrounding whitespace
+        val = val.trim()
+      }
+
+      obj[key] = val
+    } else if (debug) {
+      log(`did not match key and value when parsing line ${idx + 1}: ${line}`)
+    }
+  })
+
+  return obj
+}
+
+// Populates process.env from .env file
+function config (options /*: ?DotenvConfigOptions */) /*: DotenvConfigOutput */ {
+  let dotenvPath = path.resolve(process.cwd(), '.env')
+  let encoding /*: string */ = 'utf8'
+  let debug = false
+
+  if (options) {
+    if (options.path != null) {
+      dotenvPath = options.path
+    }
+    if (options.encoding != null) {
+      encoding = options.encoding
+    }
+    if (options.debug != null) {
+      debug = true
+    }
+  }
+
+  try {
+    // specifying an encoding returns a string instead of a buffer
+    const parsed = parse(fs.readFileSync(dotenvPath, { encoding }), { debug })
+
+    Object.keys(parsed).forEach(function (key) {
+      if (!Object.prototype.hasOwnProperty.call(process.env, key)) {
+        process.env[key] = parsed[key]
+      } else if (debug) {
+        log(`"${key}" is already defined in \`process.env\` and will not be overwritten`)
+      }
+    })
+
+    return { parsed }
+  } catch (e) {
+    return { error: e }
+  }
+}
+
+module.exports.config = config
+module.exports.parse = parse
+
+}).call(this)}).call(this,require('_process'))
+},{"_process":7,"fs":3,"path":6}],5:[function(require,module,exports){
+(function (global){(function (){
+"use strict";
+
+// ref: https://github.com/tc39/proposal-global
+var getGlobal = function () {
+	// the only reliable means to get the global object is
+	// `Function('return this')()`
+	// However, this causes CSP violations in Chrome apps.
+	if (typeof self !== 'undefined') { return self; }
+	if (typeof window !== 'undefined') { return window; }
+	if (typeof global !== 'undefined') { return global; }
+	throw new Error('unable to locate global object');
+}
+
+var global = getGlobal();
+
+module.exports = exports = global.fetch;
+
+// Needed for TypeScript and Webpack.
+if (global.fetch) {
+	exports.default = global.fetch.bind(global);
+}
+
+exports.Headers = global.Headers;
+exports.Request = global.Request;
+exports.Response = global.Response;
+}).call(this)}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{}],6:[function(require,module,exports){
 (function (process){(function (){
 // 'path' module extracted from Node.js v8.11.1 (only the posix part)
 // transplited with Babel
@@ -533,7 +820,7 @@ posix.posix = posix;
 module.exports = posix;
 
 }).call(this)}).call(this,require('_process'))
-},{"_process":3}],3:[function(require,module,exports){
+},{"_process":7}],7:[function(require,module,exports){
 // shim for using process in browser
 var process = module.exports = {};
 
@@ -719,291 +1006,4 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],4:[function(require,module,exports){
-require('dotenv').config()
-const fetch = require("node-fetch");
-const { TOKEN } = require("./js/auth");
-
-async function getRepos() {
-  let baseURL = "https://api.github.com/graphql";
-
-  await fetch(baseURL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-      Authorization: `bearer ${TOKEN}`,
-    },
-    body: JSON.stringify({
-      query: `{
-        viewer {
-          login
-          repositories(affiliations: OWNER, orderBy: {field: PUSHED_AT, direction: DESC}, first: 20, privacy: PUBLIC) {
-            edges {
-              node {
-                id
-                updatedAt
-                name
-                stargazerCount
-                primaryLanguage {
-                    name
-                    color
-                  }
-              }
-            }
-          }
-          starredRepositories {
-            totalCount
-          }
-        }
-        user(login: "Thea10") {
-            name
-            repositories(orderBy: {field: UPDATED_AT, direction: ASC}) {
-              totalCount
-            }
-          bio
-          email
-          avatarUrl
-          following {
-            totalCount
-          }
-          followers {
-            totalCount
-          }
-        
-        }
-      }`,
-    }),
-  })
-    .then((res) => res.json())
-    .then((data) => {
-      populateData(data.data);
-      document.getElementById("loading").classList.toggle("show");
-      document.getElementById("main-body").classList.toggle("show");
-    })
-    .catch((error) => {
-      console.error("Error:", error);
-      document.getElementById("error-message").textContent = error;
-    });
-}
-
-function populateData(data) {
-  let { viewer, user } = data;
-  document
-    .querySelectorAll(".avatar")
-    .forEach((item) => (item.src = user.avatarUrl));
-  document.getElementById("main-name").textContent = user.name;
-  document.getElementById("name-alias").textContent = viewer.login;
-  document.querySelector("#tab-link-profile span").textContent = viewer.login;
-  document.getElementById("user-bio").textContent = user.bio;
-  document.getElementById("user-email").textContent = user.email;
-  document.getElementById("followers").textContent = user.followers.totalCount;
-  document.getElementById("following").textContent = user.following.totalCount;
-  document.querySelectorAll(".repo-count").forEach((item) => (item.textContent = viewer.repositories.edges.length));
-  document.getElementById("gazers").textContent =
-    viewer.starredRepositories.totalCount;
-
-  let populate = viewer.repositories.edges.filter(edge => {return edge.node.primaryLanguage !== null});
-  populate.forEach(item => {
-      let details = item.node;
-      let repoDetailHolder = document.createElement("div");
-      repoDetailHolder.className = "repository-body-card d-flex justify-between";
-      let repoDetails = `
-      <div class="d-flex repo-details">
-      <a href="#" class="repo-name"> ${details.name} </a>
-  
-      <div class="d-flex"> <span> <small class="repo-color" style='background-color: ${
-        details.primaryLanguage.color
-      }'></small> ${
-      details.primaryLanguage.name
-    } </span> <span> Updated  ${getDate(
-      details.updatedAt
-    )}</span> </div>
-  
-    </div>
-  
-    <button class="star d-flex"> <i class="fa fa-star-o"></i> <span>Star</span> </button>
-      `;
-     repoDetailHolder.innerHTML = repoDetails;
-     document.getElementById('repository-body-cards').append(repoDetailHolder)
-
-
-  })
-
-
-
-}
-
-function getDate(datestr) {
-  let now = new Date().getTime();
-  let dateString = new Date(datestr).getTime();
-  let dateDifference = Math.abs(dateString - now);
-  let dateUpdated = Math.round(parseFloat(dateDifference / (1000 * 60 * 60 * 24), 10));
-   if(dateUpdated < 1){
-     return `${ Math.round(parseFloat(dateDifference / (1000 * 60 * 60), 10))} hours ago`;
-   } 
-
-   if (dateUpdated > 20){
-     return new Date(datestr).toDateString().substr(4,6);
-   }
-  return `${dateUpdated} days ago`;
-}
-
-getRepos();
-
-
-
-},{"./js/auth":5,"dotenv":6,"node-fetch":7}],5:[function(require,module,exports){
-(function (process){(function (){
-
-module.exports = {
-    TOKEN:  process.env.TOKEN
- };
-
-}).call(this)}).call(this,require('_process'))
-},{"_process":3}],6:[function(require,module,exports){
-(function (process){(function (){
-/* @flow */
-/*::
-
-type DotenvParseOptions = {
-  debug?: boolean
-}
-
-// keys and values from src
-type DotenvParseOutput = { [string]: string }
-
-type DotenvConfigOptions = {
-  path?: string, // path to .env file
-  encoding?: string, // encoding of .env file
-  debug?: string // turn on logging for debugging purposes
-}
-
-type DotenvConfigOutput = {
-  parsed?: DotenvParseOutput,
-  error?: Error
-}
-
-*/
-
-const fs = require('fs')
-const path = require('path')
-
-function log (message /*: string */) {
-  console.log(`[dotenv][DEBUG] ${message}`)
-}
-
-const NEWLINE = '\n'
-const RE_INI_KEY_VAL = /^\s*([\w.-]+)\s*=\s*(.*)?\s*$/
-const RE_NEWLINES = /\\n/g
-const NEWLINES_MATCH = /\n|\r|\r\n/
-
-// Parses src into an Object
-function parse (src /*: string | Buffer */, options /*: ?DotenvParseOptions */) /*: DotenvParseOutput */ {
-  const debug = Boolean(options && options.debug)
-  const obj = {}
-
-  // convert Buffers before splitting into lines and processing
-  src.toString().split(NEWLINES_MATCH).forEach(function (line, idx) {
-    // matching "KEY' and 'VAL' in 'KEY=VAL'
-    const keyValueArr = line.match(RE_INI_KEY_VAL)
-    // matched?
-    if (keyValueArr != null) {
-      const key = keyValueArr[1]
-      // default undefined or missing values to empty string
-      let val = (keyValueArr[2] || '')
-      const end = val.length - 1
-      const isDoubleQuoted = val[0] === '"' && val[end] === '"'
-      const isSingleQuoted = val[0] === "'" && val[end] === "'"
-
-      // if single or double quoted, remove quotes
-      if (isSingleQuoted || isDoubleQuoted) {
-        val = val.substring(1, end)
-
-        // if double quoted, expand newlines
-        if (isDoubleQuoted) {
-          val = val.replace(RE_NEWLINES, NEWLINE)
-        }
-      } else {
-        // remove surrounding whitespace
-        val = val.trim()
-      }
-
-      obj[key] = val
-    } else if (debug) {
-      log(`did not match key and value when parsing line ${idx + 1}: ${line}`)
-    }
-  })
-
-  return obj
-}
-
-// Populates process.env from .env file
-function config (options /*: ?DotenvConfigOptions */) /*: DotenvConfigOutput */ {
-  let dotenvPath = path.resolve(process.cwd(), '.env')
-  let encoding /*: string */ = 'utf8'
-  let debug = false
-
-  if (options) {
-    if (options.path != null) {
-      dotenvPath = options.path
-    }
-    if (options.encoding != null) {
-      encoding = options.encoding
-    }
-    if (options.debug != null) {
-      debug = true
-    }
-  }
-
-  try {
-    // specifying an encoding returns a string instead of a buffer
-    const parsed = parse(fs.readFileSync(dotenvPath, { encoding }), { debug })
-
-    Object.keys(parsed).forEach(function (key) {
-      if (!Object.prototype.hasOwnProperty.call(process.env, key)) {
-        process.env[key] = parsed[key]
-      } else if (debug) {
-        log(`"${key}" is already defined in \`process.env\` and will not be overwritten`)
-      }
-    })
-
-    return { parsed }
-  } catch (e) {
-    return { error: e }
-  }
-}
-
-module.exports.config = config
-module.exports.parse = parse
-
-}).call(this)}).call(this,require('_process'))
-},{"_process":3,"fs":1,"path":2}],7:[function(require,module,exports){
-(function (global){(function (){
-"use strict";
-
-// ref: https://github.com/tc39/proposal-global
-var getGlobal = function () {
-	// the only reliable means to get the global object is
-	// `Function('return this')()`
-	// However, this causes CSP violations in Chrome apps.
-	if (typeof self !== 'undefined') { return self; }
-	if (typeof window !== 'undefined') { return window; }
-	if (typeof global !== 'undefined') { return global; }
-	throw new Error('unable to locate global object');
-}
-
-var global = getGlobal();
-
-module.exports = exports = global.fetch;
-
-// Needed for TypeScript and Webpack.
-if (global.fetch) {
-	exports.default = global.fetch.bind(global);
-}
-
-exports.Headers = global.Headers;
-exports.Request = global.Request;
-exports.Response = global.Response;
-}).call(this)}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}]},{},[4]);
+},{}]},{},[1]);
