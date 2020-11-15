@@ -1,6 +1,5 @@
 const { TOKEN } = require("./js/auth");
 
-
 /* eslint-disable no-unused-vars */
 async function getRepos() {
   let baseURL = "https://api.github.com/graphql";
@@ -71,11 +70,13 @@ function populateData(data) {
     .querySelectorAll(".avatar")
     .forEach((item) => (item.src = user.avatarUrl));
   document.getElementById("main-name").textContent = user.name;
+  document.getElementById("name-alias").textContent = viewer.login;
+  document.querySelector("#tab-link-profile span").textContent = viewer.login;
   document.getElementById("user-bio").textContent = user.bio;
   document.getElementById("user-email").textContent = user.email;
   document.getElementById("followers").textContent = user.followers.totalCount;
   document.getElementById("following").textContent = user.following.totalCount;
-  document.querySelectorAll(".repo-count").forEach((item) => (item.textContent = user.repositories.totalCount));
+  document.querySelectorAll(".repo-count").forEach((item) => (item.textContent = viewer.repositories.edges.length));
   document.getElementById("gazers").textContent =
     viewer.starredRepositories.totalCount;
 
@@ -94,7 +95,7 @@ function populateData(data) {
       details.primaryLanguage.name
     } </span> <span> Updated  ${getDate(
       details.updatedAt
-    )} days ago</span> </div>
+    )}</span> </div>
   
     </div>
   
@@ -113,11 +114,18 @@ function populateData(data) {
 function getDate(datestr) {
   let now = new Date().getTime();
   let dateString = new Date(datestr).getTime();
-  return Math.round(parseFloat(Math.abs(dateString - now) / (1000 * 60 * 60 * 24), 10));
+  let dateDifference = Math.abs(dateString - now);
+  let dateUpdated = Math.round(parseFloat(dateDifference / (1000 * 60 * 60 * 24), 10));
+   if(dateUpdated < 1){
+     return `${ Math.round(parseFloat(dateDifference / (1000 * 60 * 60), 10))} hours ago`;
+   } 
+
+   if (dateUpdated > 20){
+     return new Date(datestr).toDateString().substr(4,6);
+   }
+  return `${dateUpdated} days ago`;
 }
 
 getRepos();
 
-module.exports = {
-  getRepos
-}
+

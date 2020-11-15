@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/Thea10/buycoins_test#readme",
   "dependencies": {
-    "browserify": "^17.0.0"
+    "browserify": "^17.0.0",
+    "dotenv": "^8.2.0"
   }
 }
