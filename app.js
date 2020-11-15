@@ -1,6 +1,7 @@
+require('dotenv').config()
+const fetch = require("node-fetch");
 const { TOKEN } = require("./js/auth");
 
-/* eslint-disable no-unused-vars */
 async function getRepos() {
   let baseURL = "https://api.github.com/graphql";
 
